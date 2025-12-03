@@ -22,6 +22,23 @@ Tasks:
 This establishes why vectorized, columnar, and tensor-based operations are essential for **edge data pipelines**.
 
 ---
+### Repo Structure
+
+```bash
+Week_02_Python-DataPipelines/
+├── src/
+│   ├── sensors/
+│   │   └── mpu6050.py          # Thin wrapper around MPU6050 driver
+│   └── pipelines/
+│       └── parquet_writer.py   # Chunked Parquet writer using Polars
+├── data/
+│   └── parquet/                # Logged IMU chunks (Day 2)
+├── logger_v2.py                # 20 Hz streaming logger → Parquet
+├── live_dashboard.py           # Basic Parquet-backed dashboard
+├── live_dashboard_pro.py       # Direct-streaming PRO demo (dark mode, 3D cube)
+└── README.md
+
+---
 
 # 🧪 **A. Elementwise Multiply (N = 50,000,000)**
 
@@ -122,3 +139,58 @@ Runs all tests:
 * For your edge pipelines, Polars + PyTorch form the ideal foundation.
 
 ---
+
+## Day 2 – Real-Time Sensor Pipeline + Dashboards
+
+**Goal:** Turn a simple IMU logger into a modern, efficient data pipeline with live visualization.
+
+### What I Built
+
+- **Streaming logger (`logger_v2.py`)**
+  - Reads MPU6050 IMU over I²C at **20 Hz**
+  - Buffers samples in memory and writes **chunked Parquet** files (`data/parquet/`)
+  - Uses **Polars** for fast DataFrame handling
+  - Designed to keep RAM and CPU usage low on a Raspberry Pi 5
+
+- **Student dashboard (`live_dashboard.py`)**
+  - Reads latest Parquet chunk(s) with Polars
+  - Dash + Plotly app with:
+    - Live plot of `accel_x` (and optionally other axes)
+    - Rolling window of recent samples
+  - Updates every 0.5 s (Dash `Interval` callback)
+
+- **Pro dashboard (`live_dashboard_pro.py`) – demo only**
+  - **No disk I/O**: talks directly to the MPU6050 in a background thread
+  - Keeps a rolling **10 second ring buffer** in RAM (deque)
+  - Dark-mode Dash UI with:
+    - KPI cards:
+      - RMS Accel (m/s²)
+      - Peak Gyro (°/s)
+      - Temperature (°C)
+      - Motion state: `STILL / MOVING / SHAKING`
+    - 3 stacked time-series plots:
+      - Acceleration (x, y, z)
+      - Gyro (x, y, z)
+      - Temperature
+    - 3D **orientation cube** driven by accelerometer-based pitch/roll
+  - Runs at ~5–10 FPS, fully interactive in the browser
+
+### How to Run
+
+#### 1. Logger + basic dashboard (student version)
+
+```bash
+# Terminal 1 – logger
+cd ~/EdgeAI_Bootcamp/Week_02_Python-DataPipelines
+python logger_v2.py
+
+# Terminal 2 – basic dashboard
+cd ~/EdgeAI_Bootcamp/Week_02_Python-DataPipelines
+python live_dashboard.py
+
+# If running Pro Dashboard there is not need to run logger but note that no parquet files are kept
+# It's more of a showcase of what can be presented
+
+cd ~/EdgeAI_Bootcamp/Week_02_Python-DataPipelines
+python live_dashboard_pro.py
+
