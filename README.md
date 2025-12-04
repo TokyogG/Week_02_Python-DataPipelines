@@ -142,6 +142,7 @@ Runs all tests:
 
 ## Day 2 – Real-Time Sensor Pipeline + Dashboards
 
+
 **Goal:** Turn a simple IMU logger into a modern, efficient data pipeline with live visualization.
 
 ### What I Built
@@ -193,4 +194,48 @@ python live_dashboard.py
 
 cd ~/EdgeAI_Bootcamp/Week_02_Python-DataPipelines
 python live_dashboard_pro.py
+
+## Day 3 Quantization performance results
+
+### TinyNet – Dynamic Quantization (PyTorch)
+
+| Model        | Type   | Avg Latency (ms) | Speedup |
+|-------------|--------|------------------|---------|
+| TinyNet     | FP32   | 0.2805           | 1.00×   |
+| TinyNet     | INT8   | 0.2285           | 1.23×   |
+
+On a tiny fully-connected network, dynamic INT8 quantization gives ~20% speedup on the Pi 5 CPU. Larger models (e.g. MobileNet) and batched inputs should show bigger gains
+
+### BiggerNet – Dynamic Quantization (PyTorch)
+
+| Model        | Type   | Avg Latency (ms) | Speedup  |
+|--------------|--------|------------------|----------|
+| BiggerNet    | FP32   | 1.3467           | 1.00×    |
+| BiggerNet    | INT8   | 0.4190           | **3.21×**|
+
+Quantizing a larger FC model produces a 3.2× speedup on the Pi 5. This matches expected INT8 gains and confirms that quantization benefits grow significantly with model size
+
+## 🔢 Quantization Methods — Comparison Table
+
+| Method | What Gets Quantized | Accuracy | Speedup | Memory Reduction | Calibration Needed | Best For |
+|--------|----------------------|----------|---------|------------------|---------------------|----------|
+| **Dynamic Quantization** | Weights (INT8), activations stay FP32 | ⭐⭐☆☆ (Moderate) | ⭐⭐☆☆ (~1.2–2×) | ⭐⭐☆☆ (≈4× smaller weights) | ❌ No | LLMs, Transformers on CPU, fast prototyping |
+| **Static PTQ (Post-Training Quantization)** | Weights + activations (INT8) | ⭐⭐⭐☆ (Good) | ⭐⭐⭐☆ (~1.5–3×) | ⭐⭐⭐⭐ (4× smaller model + smaller activations) | ✔️ Yes (small calibration dataset) | CNNs, MobileNet, ResNet, image models |
+| **QAT (Quantization-Aware Training)** | Weights + activations (INT8 simulated during training) | ⭐⭐⭐⭐ (Best) | ⭐⭐⭐⭐ (~2–4×) | ⭐⭐⭐⭐ (4× smaller) | ✔️ Yes (training/fine-tuning) | Production-grade edge AI, MCUs, NPUs, tiny models |
+| **INT4 Quantization** | Weights (INT4) + optional activations | ⭐⭐☆☆ to ⭐⭐⭐☆ | ⭐⭐⭐⭐ (~3–5×) | ⭐⭐⭐⭐⭐ (8× smaller) | Depends (dynamic or PTQ) | LLMs on CPU/GPU, memory-constrained models |
+| **Mixed-Precision (FP16 + INT8)** | Critical layers FP16, others INT8 | ⭐⭐⭐⭐ (Very high) | ⭐⭐⭐☆ (~1.5–2.5×) | ⭐⭐⭐☆ (2×–3×) | Optional | Models that lose too much accuracy in full INT8 |
+
+### Notes
+- **QAT provides the best accuracy** and is preferred for edge deployments (Pi, Hailo, NPUs, MCUs).
+- **PTQ requires a small “calibration set”** (100–1000 samples) to map activation ranges.
+- **Dynamic quantization is the easiest** but gives the smallest gains.
+- **INT4** is becoming the standard for LLMs when memory is tight.
+- **Speedups vary by hardware** (ARM CPUs ≈ 1.3–3×, NPUs ≈ 5–10×).
+- **Per-channel INT8** for weights produces significantly better accuracy than per-tensor.
+- **Symmetric weights, asymmetric activations** is the industry standard layout.
+
+### Recommended Quantization Path for Edge AI
+1. **Start with Dynamic Quantization** → quick size/latency check.
+2. **Move to Static PTQ** → get INT8 activations + lower latency.
+3. **Finish with QAT** → maximize accuracy for deployment to Pi/Hailo/MCU.
 
